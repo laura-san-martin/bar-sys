@@ -1,0 +1,58 @@
+version: '3.1'
+
+services:
+
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGODB_DATABASE: "bar"
+    ports:
+      - 27017:27017
+  
+  mongo-seed:
+    build: ./database
+    depends_on:
+      - mongo
+
+  mongo-express:
+      image: mongo-express
+      restart: always
+      environment:
+          ME_CONFIG_MONGODB_URL: mongodb://admin:password@mongo:27017/
+
+      ports:
+        - 8081:8081
+      depends_on:
+        - mongo
+
+  server:
+    build: ./server
+    restart: always
+    ports:
+      - 7171:443
+      - 5206:80
+    environment:
+      MongoDB__Host: mongo
+      environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: https://+:443;http://+:80
+      ASPNETCORE_HTTPS_PORT: 7171
+      ASPNETCORE_Kestrel__Certificates__Default__Password: certpass
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/dev_cert.pfx
+    volumes:
+      - ./https/dev_cert.pfx:/https/dev_cert.pfx:ro
+    depends_on:
+      - mongo
+
+  client:
+    build: ./client
+    restart: always
+    environment:
+      - NODE_ENV=production
+    ports:
+      - 8080:80
+    depends_on:
+      - server
